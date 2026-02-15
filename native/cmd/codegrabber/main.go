@@ -1,26 +1,32 @@
 package main
 
 import (
-	"log"
 	"native/internal/application"
 	"native/internal/domain"
 	"native/internal/infrastructure/config"
 	"native/internal/infrastructure/factory"
+	"native/internal/infrastructure/logger"
 	"native/internal/infrastructure/native"
-	"os"
 )
 
 func main() {
 
+	er := logger.Init("codegrabber.log")
+	if er != nil {
+		return
+	}
+
+	logger.Logger.Println("Native host started")
+
+	// 🔥 VERY IMPORTANT
 	cfg, err := config.Load("config.json")
 	if err != nil {
-		log.Fatal(err)
+		logger.Logger.Println(err)
 	}
-	// 🔥 VERY IMPORTANT
 	// Prevent log pollution of stdout (native protocol)
-	log.SetOutput(os.Stderr)
+	// All logging now uses logger.Logger
 
-	log.Println("CodeGrabber Native Host Started")
+	logger.Logger.Println("CodeGrabber Native Host Started")
 
 	transport := native.NewTransport()
 
@@ -33,16 +39,16 @@ func main() {
 		// 1️⃣ Read message from Chrome
 		err := transport.ReadMessage(&problem)
 		if err != nil {
-			log.Println("Read error:", err)
+			logger.Logger.Println("Read error:", err)
 			return
 		}
 
-		log.Println("Received problem:", problem.Slug)
+		logger.Logger.Println("Received problem:", problem.Slug)
 
 		// 2️⃣ Process problem (create files etc.)
 		err = service.Handle(problem)
 		if err != nil {
-			log.Println("Processing error:", err)
+			logger.Logger.Println("Processing error:", err)
 
 			// Send failure response
 			transport.WriteMessage(map[string]string{
@@ -53,14 +59,14 @@ func main() {
 			continue
 		}
 
-		log.Println("Finished processing:", problem.Slug)
+		logger.Logger.Println("Finished processing:", problem.Slug)
 
 		// 3️⃣ Send success response
 		err = transport.WriteMessage(map[string]string{
 			"status": "ok",
 		})
 		if err != nil {
-			log.Println("Write error:", err)
+			logger.Logger.Println("Write error:", err)
 			return
 		}
 	}
